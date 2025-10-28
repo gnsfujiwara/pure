@@ -189,7 +189,11 @@ prompt_pure_precmd() {
 	# When VIRTUAL_ENV_DISABLE_PROMPT is empty, it was unset by the user and
 	# Pure should take back control.
 	if [[ -n $VIRTUAL_ENV ]] && [[ -z $VIRTUAL_ENV_DISABLE_PROMPT || $VIRTUAL_ENV_DISABLE_PROMPT = 12 ]]; then
-		psvar[12]="${VIRTUAL_ENV:t}"
+		if [[ -n $VIRTUAL_ENV_PROMPT ]]; then
+			psvar[12]="${VIRTUAL_ENV_PROMPT}"
+		else
+			psvar[12]="${VIRTUAL_ENV:t}"
+		fi
 		export VIRTUAL_ENV_DISABLE_PROMPT=12
 	fi
 
@@ -338,6 +342,7 @@ prompt_pure_async_git_fetch() {
 	command git -c gc.auto=0 fetch \
 		--quiet \
 		--no-tags \
+		--no-prune-tags \
 		--recurse-submodules=no \
 		$remote &>/dev/null &
 	wait $! || return $fail_code
@@ -681,19 +686,21 @@ prompt_pure_state_setup() {
 	[[ $UID -eq 0 ]] && username='%F{$prompt_pure_colors[user:root]}%n%f'"$hostname"
 
 	typeset -gA prompt_pure_state
-	prompt_pure_state[version]="1.21.0"
+	prompt_pure_state[version]="1.23.0"
 	prompt_pure_state+=(
 		username "$username"
 		prompt	 "${PURE_PROMPT_SYMBOL:-❯}"
 	)
 }
 
-# Return true if executing inside a Docker, LXC or systemd-nspawn container.
+# Return true if executing inside a Docker, OCI, LXC, or systemd-nspawn container.
 prompt_pure_is_inside_container() {
 	local -r cgroup_file='/proc/1/cgroup'
 	local -r nspawn_file='/run/host/container-manager'
 	[[ -r "$cgroup_file" && "$(< $cgroup_file)" = *(lxc|docker)* ]] \
 		|| [[ "$container" == "lxc" ]] \
+		|| [[ "$container" == "oci" ]] \
+		|| [[ "$container" == "podman" ]] \
 		|| [[ -r "$nspawn_file" ]]
 }
 
